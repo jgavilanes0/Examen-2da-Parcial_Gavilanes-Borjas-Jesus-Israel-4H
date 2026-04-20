@@ -1,0 +1,214 @@
+﻿@page "/productos"
+@rendermode InteractiveServer
+
+<PageTitle>Productos</PageTitle>
+<h3>Productos</h3>
+
+@if (mensajeError != "")
+{
+    <div class="alert alert-danger">@mensajeError</div>
+}
+
+<table cellpadding="5">
+    <tr>
+        <td><label>Inventario</label></td>
+        <td><input type="number" class="form-control" @bind="nuevoInventario" disabled="@modoEdicion" /></td>
+    </tr>
+    <tr>
+        <td><label>Nombre</label></td>
+        <td><input type="text" class="form-control" @bind="nuevoNombre" /></td>
+    </tr>
+    <tr>
+        <td><label>Departamento</label></td>
+        <td>
+            <input type="radio" name="depto" checked="@(nuevoDepartamento == "Frutas")" @onchange='() => nuevoDepartamento = "Frutas"' /> Frutas &nbsp;
+            <input type="radio" name="depto" checked="@(nuevoDepartamento == "Verduras")" @onchange='() => nuevoDepartamento = "Verduras"' /> Verduras &nbsp;
+            <input type="radio" name="depto" checked="@(nuevoDepartamento == "Lácteos")" @onchange='() => nuevoDepartamento = "Lácteos"' /> Lácteos
+        </td>
+    </tr>
+</table>
+<br />
+
+<div>
+    @if (modoEdicion)
+    {
+        <button class="btn btn-primary" @onclick="Actualizar">Actualizar</button>
+        <button class="btn btn-danger" @onclick="Cancelar">Cancelar</button>
+    }
+    else
+    {
+        <button class="btn btn-primary" @onclick="Guardar">Guardar</button>
+    }
+    
+    @if (viendoExistencias)
+    {
+        <button class="btn btn-secondary" @onclick="CambiarVista">Listado</button>
+    }
+    else
+    {
+        <button class="btn btn-secondary" @onclick="CambiarVista">Existencias</button>
+    }
+</div>
+<br />
+
+@if (viendoExistencias)
+{
+    <p>Existencias por departamento</p>
+    <table class="table">
+        <tr><th>Frutas</th><th>Verduras</th><th>Lácteos</th></tr>
+        <tr>
+            <td>@ContarDepartamentosEnConcretos("Frutas")</td>
+            <td>@ContarDepartamentosEnConcretos("Verduras")</td>
+            <td>@ContarDepartamentosEnConcretos("Lácteos")</td>
+        </tr>
+    </table>
+}
+else
+{
+    <p>Listado de productos</p>
+    <table class="table">
+        <tr><th>Inventario</th><th>Nombre</th><th>Departamento</th><th>Acciones</th></tr>
+        @foreach (var p in listaProductos)
+        {
+            <tr>
+                <td>@p.Inventario</td>
+                <td>@p.Nombre</td>
+                <td>@p.Departamento</td>
+                <td>
+                    <button class="btn btn-danger btn-sm" @onclick="() => Eliminar(p)">Eliminar</button>
+                    <button class="btn btn-warning btn-sm" @onclick="() => VisualizarEdicion(p)">Modificar</button>
+                </td>
+            </tr>
+        }
+    </table>
+}
+@code {
+
+    public class Producto // la clase que se usara en la lista de productos, cada Producto es un producto que ira a la lista
+    {
+        public int Inventario { get; set; }
+        public string Nombre { get; set; }
+        public string Departamento { get; set; }
+    }
+
+    
+    private List<Producto> listaProductos = new List<Producto>(); // aqui la lista de productos, todos los productos se guardan
+
+    private int nuevoInventario = 0;
+    private string nuevoNombre = "";
+    private string nuevoDepartamento = "Frutas";
+
+    private string mensajeError = "";
+    private bool viendoExistencias = false;
+    private bool modoEdicion = false;
+    private int idDelProducto = 0; 
+
+    private void Guardar()
+    {
+        mensajeError = "";
+
+        if (nuevoInventario <= 0 || nuevoNombre == "") // si hay campos vacios tienes que poner algo
+        {
+            mensajeError = "Campos vacios, por favor rellenalos";
+            return;
+        }
+
+ // si el id del producto existe
+        bool existe = false;
+        foreach (var p in listaProductos)
+        {
+            if (p.Inventario == nuevoInventario)
+            {
+                existe = true;
+                break;
+            }
+        }
+
+        if (existe == true) // funcion para guardar los productos, si existe no se guarda, sino si
+        {
+            mensajeError = "Num de inventario ya registrado, por favor inserte otro";
+        }
+        else
+        {
+            Producto nuevo = new Producto();
+            nuevo.Inventario = nuevoInventario;
+            nuevo.Nombre = nuevoNombre;
+            nuevo.Departamento = nuevoDepartamento;
+
+            listaProductos.Add(nuevo);
+            Limpiar();
+        }
+    }
+
+    private void VisualizarEdicion(Producto prod)
+    {
+        modoEdicion = true;
+        mensajeError = "";
+        
+        idDelProducto = prod.Inventario;
+        nuevoInventario = prod.Inventario;
+        nuevoNombre = prod.Nombre;
+        nuevoDepartamento = prod.Departamento;
+    }
+
+    private void Actualizar() // se busca el producto y cambia los datos, claro si las casillas tienen info
+    {
+        if (nuevoNombre == "")
+        {
+            mensajeError = "El nombre no puede estar vacío.";
+            return;
+        }
+        foreach (var p in listaProductos)
+        {
+            if (p.Inventario == idDelProducto)
+            {
+                p.Nombre = nuevoNombre;
+                p.Departamento = nuevoDepartamento;
+                break;
+            }
+        }
+        Limpiar();
+    }
+    private void Cancelar()
+    {
+        Limpiar();
+    }
+
+    private void Eliminar(Producto prod)
+    {
+        listaProductos.Remove(prod);
+    }
+
+    private void CambiarVista() // existencias
+    {
+        if (viendoExistencias == true)
+        {
+            viendoExistencias = false;
+        }
+        else
+        {
+            viendoExistencias = true;
+        }
+    }
+    private int ContarDepartamentosEnConcretos(string nombreDepto)
+    {
+        int total = 0;
+        foreach (var p in listaProductos)
+        {
+            if (p.Departamento == nombreDepto)
+            {
+                total++;
+            }
+        }
+        return total;
+    }
+    private void Limpiar()
+    {
+        nuevoInventario = 0;
+        nuevoNombre = "";
+        nuevoDepartamento = "Frutas";
+        mensajeError = "";
+        modoEdicion = false;
+        idDelProducto = 0;
+    }
+}
